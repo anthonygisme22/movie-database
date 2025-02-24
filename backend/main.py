@@ -1,31 +1,39 @@
-from fastapi import FastAPI, Query  # FastAPI for handling API requests
-from sqlalchemy import create_engine, Column, String, Integer  # SQLAlchemy for database management
-from sqlalchemy.orm import sessionmaker, declarative_base  # ORM setup
-import requests  # Handling external API calls
-import openai  # AI-based movie recommendations
+from fastapi import FastAPI
+from sqlalchemy import create_engine, Column, String, Integer
+from sqlalchemy.orm import sessionmaker, declarative_base
+import requests
+import openai
+import os
+from dotenv import load_dotenv
 
-# Initialize FastAPI application
+# Load environment variables from .env file
+load_dotenv()
+
 app = FastAPI()
 
-# Database Configuration
-DATABASE_URL = "postgresql://user:password@localhost/movies"
-engine = create_engine(DATABASE_URL)  # Connect to PostgreSQL
-SessionLocal = sessionmaker(bind=engine)  # Create session
-Base = declarative_base()  # Base class for ORM models
+# Fetch environment variables
+DATABASE_URL = os.getenv("DATABASE_URL")
+TMDB_API_KEY = os.getenv("TMDB_API_KEY")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
-# Define Movie Model (Database Table)
+# Database setup
+engine = create_engine(DATABASE_URL)
+SessionLocal = sessionmaker(bind=engine)
+Base = declarative_base()
+
 class Movie(Base):
-    __tablename__ = "movies"  # Table name in PostgreSQL
-    id = Column(Integer, primary_key=True, index=True)  # Unique ID for each movie
-    title = Column(String, index=True)  # Movie title
-    description = Column(String)  # Movie description
-    rating = Column(Integer)  # User rating
+    __tablename__ = "movies"
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String, index=True)
+    description = Column(String)
+    rating = Column(Integer)
 
-# Create table in database
 Base.metadata.create_all(bind=engine)
 
-# TMDb API Integration
-TMDB_API_KEY = "your_tmdb_api_key"
+@app.get("/")
+def home():
+    return {"message": "Movie API is running!"}
+
 @app.get("/search")
 def search_movies(query: str):
     """
@@ -35,8 +43,6 @@ def search_movies(query: str):
     response = requests.get(url).json()
     return response.get("results", [])
 
-# AI-powered Recommendations (OpenAI API)
-openai.api_key = "your_openai_api_key"
 @app.get("/ai-recommend")
 def ai_recommend(description: str):
     """
@@ -47,4 +53,4 @@ def ai_recommend(description: str):
         prompt=f"Find a movie based on this description: {description}",
         max_tokens=100
     )
-    return {"recommendation": response["choices"][0]["text"]}
+    return {"recommendation": response["choices"][0]["text"].strip()}
